@@ -273,9 +273,14 @@ def compute(aa_path: Path, lm_path: Path | None, out_path: Path) -> None:
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    payload = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+    out_path.write_text(payload, encoding="utf-8")
+    # 同步生成 data.js：script 标签加载不受 file:// 协议的 fetch 限制，
+    # 保证双击本地打开 index.html 也能读到数据
+    js_path = out_path.parent / "data.js"
+    js_path.write_text("window.RADAR_DATA=" + payload + ";", encoding="utf-8")
     print(f"models={len(models_out)} defaults={len(defaults)} "
-          f"arena_match={match_stats} -> {out_path}")
+          f"arena_match={match_stats} -> {out_path} (+ data.js)")
 
 
 def main() -> None:

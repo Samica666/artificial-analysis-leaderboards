@@ -113,7 +113,7 @@
     <div style="margin-top:8px">指令遵循 / 代码编程含主观双盲成分，归一化 (Elo−1200)/500；事实可靠性归一化 (v+100)/200。维度缺失表示该模型暂无对应评测数据。</div>
   </footer>
 </div>
-<div id="err">数据加载失败：请通过 https 链接访问本页（file:// 直开无法读取数据）。</div>
+<div id="err">数据加载失败：data.js / data.json 均不可用，请确认通过 https 链接访问或将整个 site 目录一起拷贝。</div>
 
 <script src="echarts.min.js"></script>
 <script>
@@ -140,6 +140,16 @@ function css(v){ return getComputedStyle(document.documentElement).getPropertyVa
 const PALETTE = ["#5b8cff","#38e0c8","#ffb454","#ff6b81","#b78cff","#7bd88a","#ffd166","#4dd0e1","#f28bb2","#a3e635","#ff9f6e","#8ea2ff"];
 
 function load(){
+  // 优先 data.js（script 标签加载，file:// 双击直开也能用）；
+  // 失败再回退 fetch data.json（https 托管场景）
+  if(window.RADAR_DATA){ init(window.RADAR_DATA); return; }
+  const s=document.createElement("script");
+  s.src="data.js?t="+Date.now();
+  s.onload=()=>{ window.RADAR_DATA ? init(window.RADAR_DATA) : fetchFallback(); };
+  s.onerror=fetchFallback;
+  document.head.appendChild(s);
+}
+function fetchFallback(){
   fetch("data.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(init).catch(()=>{ $("#err").style.display="block"; });
 }
 
