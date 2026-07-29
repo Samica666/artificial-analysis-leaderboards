@@ -110,7 +110,7 @@
   </div>
 
   <div class="card">
-    <div class="hint">六维排行榜 · 点击任意模型名，六个榜单联动高亮并自动滚动定位（再次点击取消）</div>
+    <div class="hint">六维排行榜 · 点击模型名加入雷达图并六榜联动高亮定位（再次点击同一模型则移出雷达图）</div>
     <div class="dimgrid" id="dimLists"></div>
   </div>
 
@@ -198,8 +198,8 @@ function renderChips(){
   DATA.models.filter(m=>selected.has(m.id)).forEach(m=>{
     const c=document.createElement("span"); c.className="chip";
     c.innerHTML=`<i style="background:${m._color}"></i><span class="lnk" data-id="${m.id}" title="在六维榜中定位">${m.name}</span><b title="移除">✕</b>`;
-    c.querySelector("b").onclick=()=>{ selected.delete(m.id); renderAll(); };
-    c.querySelector(".lnk").onclick=()=>toggleFocus(m.id);
+    c.querySelector("b").onclick=()=>{ selected.delete(m.id); if(focusId===m.id) focusId=null; renderAll(); };
+    c.querySelector(".lnk").onclick=()=>{ focusId=(focusId===m.id)?null:m.id; renderLists(); };
     box.appendChild(c);
   });
 }
@@ -212,7 +212,7 @@ function renderPicker(q){
   list.slice(0,300).forEach(m=>{
     const r=document.createElement("label"); r.className="row";
     r.innerHTML=`<input type="checkbox" ${selected.has(m.id)?"checked":""}><i style="background:${m._color}"></i><span>${m.name}</span><span class="org">${m.creator}</span>`;
-    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); renderChips(); renderChart(); $("#selN").textContent=selected.size; };
+    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); if(!e.target.checked && focusId===m.id) focusId=null; renderChips(); renderChart(); $("#selN").textContent=selected.size; };
     box.appendChild(r);
   });
   if(list.length>300){ const d=document.createElement("div"); d.className="row"; d.textContent=`…另有 ${list.length-300} 条，请缩小搜索范围`; box.appendChild(d); }
@@ -255,8 +255,19 @@ function renderChart(){
 }
 addEventListener("resize", ()=>CHART&&CHART.resize());
 
-/* ---------- 六维排行榜（联动高亮 + 自动滚动定位） ---------- */
-function toggleFocus(id){ focusId = (focusId===id) ? null : id; renderLists(); }
+/* ---------- 六维排行榜（联动高亮 + 自动滚动定位 + 点击加入雷达图） ---------- */
+function toggleFocus(id){
+  if(selected.has(id) && focusId===id){
+    // 已选中且正高亮 → 移出雷达图 + 取消高亮
+    selected.delete(id);
+    focusId = null;
+  } else {
+    // 未选中或已选中未高亮 → 加入雷达图（如未在）+ 设为高亮
+    selected.add(id);
+    focusId = id;
+  }
+  renderAll();
+}
 function renderLists(){
   const grid=$("#dimLists"); grid.innerHTML="";
   DIMS().forEach(d=>{
