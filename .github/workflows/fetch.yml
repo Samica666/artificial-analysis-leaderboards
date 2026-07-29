@@ -36,3 +36,6 @@ jobs:
           DATE=$(date -u +%F)
           git diff --cached --quiet || git commit -m "data: ${DATE} daily fetch"
           git push
+
+      - name: Purge jsDelivr CDN cache
+        run: curl -s "https://purge.jsdelivr.net/gh/Samica666/artificial-analysis-leaderboards@main/site/data.js" || true

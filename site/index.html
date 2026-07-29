@@ -139,15 +139,24 @@ setTheme(localStorage.getItem("radar-theme") || (matchMedia("(prefers-color-sche
 function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 const PALETTE = ["#5b8cff","#38e0c8","#ffb454","#ff6b81","#b78cff","#7bd88a","#ffd166","#4dd0e1","#f28bb2","#a3e635","#ff9f6e","#8ea2ff"];
 
-function load(){
-  // 优先 data.js（script 标签加载，file:// 双击直开也能用）；
-  // 失败再回退 fetch data.json（https 托管场景）
-  if(window.RADAR_DATA){ init(window.RADAR_DATA); return; }
+// 数据源优先级：① jsDelivr CDN（GitHub 仓库每日最新数据，任何静态副本打开都是新的）
+// ② 本地 data.js（离线快照，file:// 双击直开可用）③ fetch data.json（https 托管回退）
+const REMOTE_DATA = "https://cdn.jsdelivr.net/gh/Samica666/artificial-analysis-leaderboards@main/site/data.js";
+function loadScript(src, ok, fail){
   const s=document.createElement("script");
-  s.src="data.js?t="+Date.now();
-  s.onload=()=>{ window.RADAR_DATA ? init(window.RADAR_DATA) : fetchFallback(); };
-  s.onerror=fetchFallback;
+  s.src=src; s.onload=ok; s.onerror=fail;
   document.head.appendChild(s);
+}
+function load(){
+  if(window.RADAR_DATA){ init(window.RADAR_DATA); return; }
+  loadScript(REMOTE_DATA+"?t="+Date.now(),
+    ()=>{ window.RADAR_DATA ? init(window.RADAR_DATA) : loadLocal(); },
+    loadLocal);
+}
+function loadLocal(){
+  loadScript("data.js?t="+Date.now(),
+    ()=>{ window.RADAR_DATA ? init(window.RADAR_DATA) : fetchFallback(); },
+    fetchFallback);
 }
 function fetchFallback(){
   fetch("data.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(init).catch(()=>{ $("#err").style.display="block"; });
