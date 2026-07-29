@@ -68,6 +68,17 @@
   @media (min-width:700px){ footer .formula{ grid-template-columns:1fr 1fr; } }
   #err { text-align:center; color:var(--warn); padding:40px 10px; font-size:14px; display:none; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  #loading { text-align:center; color:var(--text2); padding:60px 10px; font-size:14px; }
+  #loading .spin { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:sp .8s linear infinite; vertical-align:middle; margin-right:8px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+</style>
+<script>
+/* 主题预置：在 body 渲染前读取偏好，避免暗→亮闪烁（FOUC） */
+(function(){
+  var t = localStorage.getItem('radar-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  if(t==='light') document.documentElement.setAttribute('data-theme','light');
+})();
+</script>
 
   /* 六维排行榜 */
   .hint { font-size:12px; color:var(--text2); margin-bottom:8px; }
@@ -101,6 +112,7 @@
 
   <div class="card">
     <div class="chips" id="chips"></div>
+    <div id="loading"><span class="spin"></span>正在加载最新数据…</div>
     <div id="radar"></div>
     <details>
       <summary>＋ 添加 / 移除模型（共 <span id="totalN">0</span> 款，当前已选 <span id="selN">0</span> 款）</summary>
@@ -167,7 +179,7 @@ function loadLocal(){
     fetchFallback);
 }
 function fetchFallback(){
-  fetch("data.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(init).catch(()=>{ $("#err").style.display="block"; });
+  fetch("data.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(init).catch(()=>{ $("#loading").style.display="none"; $("#err").style.display="block"; });
 }
 
 function modelScore(m){ const v=DIMS().map(d=>m.dims[d.key]).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; }
@@ -175,8 +187,11 @@ function DIMS(){ return DATA.dimensions; }
 
 function init(d){
   DATA=d;
+  // 过滤维度数据过少的模型（<3 维），避免单维度均值虚高误导排行榜（如 o3-pro 仅 GPQA 一项）
+  d.models = d.models.filter(m => (m.dims_available||0) >= 3);
   d.models.forEach((m,i)=>{ m._color = m.creator_color || PALETTE[i%PALETTE.length]; m._avg = modelScore(m); });
-  selected = new Set(d.defaults);
+  selected = new Set(d.defaults.filter(id => d.models.some(m=>m.id===id)));
+  const ld=$("#loading"); if(ld) ld.style.display="none";
   // 顶部信息
   $("#totalN").textContent = d.models.length;
   const t = d.meta.aa_fetched_at ? new Date(d.meta.aa_fetched_at) : null;
