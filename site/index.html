@@ -252,7 +252,7 @@ function renderChart(){
       formatter(p){ const m=models[p.seriesIndex]; let h=`<b>${m.name}</b><br>`;
         DIMS().forEach((d,i)=>{ const v=m.dims[d.key]; h+=`${d.label}：${v==null?"暂无数据":(v*100).toFixed(1)}<br>`; });
         return h; } },
-    legend:{ bottom:0, textStyle:{color:txt2,fontSize:11}, itemWidth:14, itemHeight:8, type:"scroll", pageTextStyle:{color:txt2} },
+    legend:{ bottom:0, textStyle:{color:txt2,fontSize:11}, itemWidth:14, itemHeight:8, type:"scroll", pageTextStyle:{color:txt2}, selectedMode:false },
     radar:{
       indicator: DIMS().map(d=>({name:d.label, max:100})),
       radius:"62%", center:["50%","48%"], splitNumber:4,
