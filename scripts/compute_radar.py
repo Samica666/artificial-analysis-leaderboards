@@ -246,15 +246,28 @@ def compute(aa_path: Path, lm_path: Path | None, out_path: Path) -> None:
             "subs": subs,
         })
 
-    # 厂商旗舰×8：每家取智力指数最高且六维齐全的模型
+    # 默认双模对比：① 综合最强（intelligence_index 最高且六维≥5）② DeepSeek 最强
     defaults = []
-    for creator in FLAGSHIP_CREATORS:
-        cands = [m for m in models_out
-                 if m["creator"] == creator and not m.get("deprecated")
-                 and m["dims_available"] >= 5 and m["intelligence_index"] is not None]
-        if cands:
-            best = max(cands, key=lambda m: m["intelligence_index"])
-            defaults.append(best["id"])
+    eligible = [m for m in models_out
+                if not m.get("deprecated")
+                and m["dims_available"] >= 5 and m["intelligence_index"] is not None]
+    if eligible:
+        # 综合最强
+        best_overall = max(eligible, key=lambda m: m["intelligence_index"])
+        defaults.append(best_overall["id"])
+        # DeepSeek 最强
+        ds_cands = [m for m in eligible if m["creator"] == "DeepSeek"]
+        if ds_cands:
+            best_ds = max(ds_cands, key=lambda m: m["intelligence_index"])
+            if best_ds["id"] != best_overall["id"]:
+                defaults.append(best_ds["id"])
+        # 若 DeepSeek 恰好是综合最强，取 intelligence_index 第二高作为对比
+        if len(defaults) < 2 and len(eligible) >= 2:
+            sorted_elig = sorted(eligible, key=lambda m: -m["intelligence_index"])
+            for m in sorted_elig:
+                if m["id"] not in defaults:
+                    defaults.append(m["id"])
+                    break
 
     out = {
         "meta": {

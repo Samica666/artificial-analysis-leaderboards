@@ -61,12 +61,6 @@
   .row .org { color:var(--text2); font-size:12px; margin-left:auto; flex:none; }
   .row i { width:8px; height:8px; border-radius:50%; flex:none; }
 
-  table { width:100%; border-collapse:collapse; font-size:12.5px; }
-  th, td { padding:8px 6px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
-  th:first-child, td:first-child { text-align:left; position:sticky; left:0; background:var(--card); }
-  th { color:var(--text2); cursor:pointer; user-select:none; font-weight:normal; }
-  th.sel { color:var(--accent); }
-  .tablebox { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .dimhead { font-size:11px; color:var(--text2); }
   .missing { color:var(--text2); }
   footer { font-size:12px; color:var(--text2); line-height:1.9; margin-top:6px; }
@@ -120,15 +114,6 @@
     <div class="dimgrid" id="dimLists"></div>
   </div>
 
-  <div class="card">
-    <div class="tablebox">
-      <table id="tbl">
-        <thead><tr id="tHead"></tr></thead>
-        <tbody id="tBody"></tbody>
-      </table>
-    </div>
-  </div>
-
   <footer>
     <div>数据来源：<b>Artificial Analysis</b>（artificialanalysis.ai，客观基准）＋ <b>LMArena</b>（lmarena.ai，主观双盲 Elo）· 客观基准为实线维度，主观双盲已标注</div>
     <div>数据更新：<span id="updated">–</span>（北京时间每日自动抓取）</div>
@@ -144,7 +129,7 @@
 "use strict";
 const $ = s => document.querySelector(s);
 const DIMS_FALLBACK = ["科学推理","长文本推理","指令遵循","工具调用","代码编程","事实可靠性"];
-let DATA=null, CHART=null, selected=new Set(), sortKey="avg", sortAsc=false, focusId=null;
+let DATA=null, CHART=null, selected=new Set(), focusId=null;
 
 /* ---------- 主题 ---------- */
 const themeBtn = $("#themeBtn");
@@ -205,7 +190,7 @@ function init(d){
   renderAll();
 }
 
-function renderAll(){ renderChips(); renderPicker($("#search").value); renderChart(); renderTable(); renderLists(); $("#selN").textContent=selected.size; }
+function renderAll(){ renderChips(); renderPicker($("#search").value); renderChart(); renderLists(); $("#selN").textContent=selected.size; }
 
 /* ---------- 已选 chips ---------- */
 function renderChips(){
@@ -227,7 +212,7 @@ function renderPicker(q){
   list.slice(0,300).forEach(m=>{
     const r=document.createElement("label"); r.className="row";
     r.innerHTML=`<input type="checkbox" ${selected.has(m.id)?"checked":""}><i style="background:${m._color}"></i><span>${m.name}</span><span class="org">${m.creator}</span>`;
-    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); renderChips(); renderChart(); renderTable(); $("#selN").textContent=selected.size; };
+    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); renderChips(); renderChart(); $("#selN").textContent=selected.size; };
     box.appendChild(r);
   });
   if(list.length>300){ const d=document.createElement("div"); d.className="row"; d.textContent=`…另有 ${list.length-300} 条，请缩小搜索范围`; box.appendChild(d); }
@@ -270,25 +255,6 @@ function renderChart(){
 }
 addEventListener("resize", ()=>CHART&&CHART.resize());
 
-/* ---------- 明细表 ---------- */
-function renderTable(){
-  const head=$("#tHead"), body=$("#tBody");
-  const cols=[{k:"name",t:"模型"},{k:"avg",t:"综合"}].concat(DIMS().map(d=>({k:d.key,t:d.label})));
-  head.innerHTML=cols.map(c=>`<th data-k="${c.k}" class="${sortKey===c.k?'sel':''}">${c.t}${sortKey===c.k?(sortAsc?" ↑":" ↓"):""}</th>`).join("");
-  head.querySelectorAll("th").forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(sortKey===k) sortAsc=!sortAsc; else { sortKey=k; sortAsc=false; } renderTable(); });
-  const rows=DATA.models.filter(m=>selected.has(m.id));
-  rows.sort((a,b)=>{ const va=sortKey==="name"?a.name:(sortKey==="avg"?a._avg:a.dims[sortKey]); const vb=sortKey==="name"?b.name:(sortKey==="avg"?b._avg:b.dims[sortKey]);
-    if(va==null&&vb==null)return 0; if(va==null)return 1; if(vb==null)return -1;
-    return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1); });
-  body.innerHTML=rows.map(m=>{
-    let h=`<td><span class="dot" style="background:${m._color}"></span><span class="lnk" data-id="${m.id}">${m.name}</span></td>`;
-    h+=`<td><b>${m._avg==null?"—":(m._avg*100).toFixed(1)}</b></td>`;
-    DIMS().forEach(d=>{ const v=m.dims[d.key]; h+= v==null? `<td class="missing">—</td>` : `<td>${(v*100).toFixed(1)}</td>`; });
-    return h;
-  }).join("");
-  body.querySelectorAll(".lnk").forEach(el=>el.onclick=()=>toggleFocus(el.dataset.id));
-}
-
 /* ---------- 六维排行榜（联动高亮 + 自动滚动定位） ---------- */
 function toggleFocus(id){ focusId = (focusId===id) ? null : id; renderLists(); }
 function renderLists(){
@@ -311,7 +277,7 @@ function renderLists(){
     setTimeout(()=>{
       grid.querySelectorAll(".dl-body").forEach(body=>{
         const el=body.querySelector('[data-focus="1"]');
-        if(el) body.scrollTop = el.offsetTop - body.clientHeight/2 + el.clientHeight/2;
+        if(el) body.scrollTop = el.offsetTop - 3 * el.offsetHeight;
       });
     },60);
   }

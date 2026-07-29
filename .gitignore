@@ -1,1 +1,4 @@
 .edgeone/
+.env
+.env.edgeone.bak
+site/.env
