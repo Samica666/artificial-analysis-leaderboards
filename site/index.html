@@ -226,8 +226,10 @@ function renderPicker(q){
   const box=$("#picker"); box.innerHTML="";
   list.slice(0,300).forEach(m=>{
     const r=document.createElement("label"); r.className="row";
-    r.innerHTML=`<input type="checkbox" ${selected.has(m.id)?"checked":""}><i style="background:${m._color}"></i><span>${m.name}</span><span class="org">${m.creator}</span>`;
-    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); if(!e.target.checked && focusId===m.id) focusId=null; renderChips(); renderChart(); $("#selN").textContent=selected.size; };
+    r.innerHTML=`<input type="checkbox"><i style="background:${m._color}"></i><span>${m.name}</span><span class="org">${m.creator}</span>`;
+    const cb=r.querySelector("input");
+    cb.checked = selected.has(m.id);  // 用 DOM API 显式设置，避免 innerHTML 字符串被浏览器表单状态恢复覆盖
+    cb.onchange=()=>{ cb.checked?selected.add(m.id):selected.delete(m.id); if(!cb.checked && focusId===m.id) focusId=null; renderAll(); };
     box.appendChild(r);
   });
   if(list.length>300){ const d=document.createElement("div"); d.className="row"; d.textContent=`…另有 ${list.length-300} 条，请缩小搜索范围`; box.appendChild(d); }
