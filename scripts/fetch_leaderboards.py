@@ -32,7 +32,7 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/135.0.0.0 Safari/537.36"
 )
-PARSER_VERSION = "public-web-v1"
+PARSER_VERSION = "public-web-v2"
 
 SOURCES = [
     {
@@ -123,27 +123,34 @@ def iter_nested(obj: Any) -> Iterable[Any]:
 
 
 def extract_llm_models_from_page(html: str) -> list[dict[str, Any]]:
-    pattern = re.compile(r'self\.__next_f\.push\(\[1,("(?:\\.|[^"\\])*")\]\)</script>')
+    # v2: AA 页面 RSC 载荷结构已变化，"models" 数组嵌在更大的 flight 元素内，
+    # 旧的 split(':',1)+json.loads 无法解析。改为在所有 push 数据块中用
+    # JSONDecoder.raw_decode 做平衡解析，按特征键（modelCreatorId +
+    # intelligenceIndex）定位详细模型数组。
+    chunk_pattern = re.compile(r'self\.__next_f\.push\(\[1,("(?:\\.|[^"\\])*")\]\)')
+    decoder = json.JSONDecoder()
 
-    for match in pattern.finditer(html):
-        decoded = json.loads(match.group(1))
-        if '"models":' not in decoded or ':' not in decoded:
-            continue
-
-        payload = decoded.split(':', 1)[1]
+    for match in chunk_pattern.finditer(html):
         try:
-            obj = json.loads(payload)
+            decoded = json.loads(match.group(1))
         except json.JSONDecodeError:
             continue
+        if '"models":' not in decoded:
+            continue
 
-        for node in iter_nested(obj):
-            if not isinstance(node, dict):
+        for bracket in re.finditer(r"\[\{", decoded):
+            try:
+                arr, _ = decoder.raw_decode(decoded[bracket.start():])
+            except json.JSONDecodeError:
                 continue
-            models = node.get("models")
-            if not isinstance(models, list) or not models:
-                continue
-            if isinstance(models[0], dict) and "modelCreatorId" in models[0]:
-                return clean_value(models)
+            if (
+                isinstance(arr, list)
+                and len(arr) > 50
+                and isinstance(arr[0], dict)
+                and "modelCreatorId" in arr[0]
+                and "intelligenceIndex" in arr[0]
+            ):
+                return clean_value(arr)
 
     raise RuntimeError("Could not locate detailed llm models payload in page HTML")
 
@@ -240,7 +247,9 @@ def normalize_llm(raw: dict[str, Any]) -> dict[str, Any]:
             "artificial_analysis_coding_index": raw.get("codingIndex"),
             "artificial_analysis_agentic_index": raw.get("agenticIndex"),
             "tau2_bench": raw.get("tau2"),
+            "tau3_banking": raw.get("tauBanking"),
             "terminal_bench_hard": raw.get("terminalbenchHard"),
+            "terminal_bench_v21": raw.get("terminalbenchV21"),
             "scicode": raw.get("scicode"),
             "aa_lcr": raw.get("lcr"),
             "aa_omniscience": raw.get("omniscience"),

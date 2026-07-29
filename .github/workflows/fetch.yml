@@ -2,7 +2,7 @@ name: Fetch Leaderboards
 
 on:
   schedule:
-    - cron: '13 5 * * *'  # 05:13 UTC daily
+    - cron: '13 5 * * *'  # 05:13 UTC = 13:13 北京时间，每日
   workflow_dispatch:
 
 permissions:
@@ -18,14 +18,21 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Fetch leaderboards
-        run: python3 scripts/fetch_leaderboards.py
+      - name: Fetch Artificial Analysis LLM leaderboard
+        run: python3 scripts/fetch_leaderboards.py --only llms
+
+      - name: Fetch LMArena text arena (IF / Coding)
+        run: python3 scripts/fetch_lmarena.py
+        continue-on-error: true  # LMArena 失败时降级为纯客观口径，不阻断流水线
+
+      - name: Compute six-dimension radar data
+        run: python3 scripts/compute_radar.py
 
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
-          DATE=$(python3 -c "from datetime import datetime, timezone; print(datetime.now(timezone.utc).strftime('%Y-%m-%d'))")
+          git add data/ site/data.json
+          DATE=$(date -u +%F)
           git diff --cached --quiet || git commit -m "data: ${DATE} daily fetch"
           git push

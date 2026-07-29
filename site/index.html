@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>大模型六维战力雷达 · 每日更新</title>
+<style>
+  :root {
+    --bg: #0b0e17; --bg2: #12162a; --card: #161b31; --border: #2a3158;
+    --text: #e8ecf8; --text2: #9aa3c0; --accent: #5b8cff; --accent2: #38e0c8;
+    --warn: #ffb454; --shadow: 0 4px 24px rgba(0,0,0,.45);
+  }
+  [data-theme="light"] {
+    --bg: #f4f6fb; --bg2: #ffffff; --card: #ffffff; --border: #dde3f0;
+    --text: #1c2333; --text2: #5a6478; --accent: #3b6fe0; --accent2: #0ea893;
+    --warn: #d97706; --shadow: 0 4px 18px rgba(30,45,90,.10);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    min-height: 100vh; transition: background .3s, color .3s;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 18px 14px 40px; }
+  header { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  h1 { font-size: 21px; letter-spacing:.5px; line-height:1.35; }
+  h1 .sub { display:block; font-size:12px; color:var(--text2); font-weight:normal; margin-top:4px; }
+  #themeBtn {
+    flex:none; border:1px solid var(--border); background:var(--card); color:var(--text);
+    border-radius:20px; padding:6px 14px; font-size:13px; cursor:pointer;
+  }
+  .banner {
+    display:none; background:rgba(255,180,84,.12); border:1px solid var(--warn);
+    color:var(--warn); border-radius:10px; padding:9px 12px; font-size:13px; margin-bottom:12px;
+  }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); padding:14px; margin-bottom:14px; }
+  #radar { width:100%; height:460px; }
+  @media (max-width:640px){ #radar{ height:400px; } h1{font-size:18px;} }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .chip {
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px;
+    border:1px solid var(--border); border-radius:16px; padding:4px 10px; background:var(--bg2);
+  }
+  .chip i { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .chip b { cursor:pointer; color:var(--text2); font-weight:normal; margin-left:2px; }
+
+  details { margin-top:4px; }
+  summary { cursor:pointer; color:var(--accent); font-size:13.5px; padding:6px 0; user-select:none; }
+  #search {
+    width:100%; border:1px solid var(--border); background:var(--bg2); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:14px; margin:8px 0;
+  }
+  #picker { max-height:260px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .row {
+    display:flex; align-items:center; gap:8px; padding:7px 6px; font-size:13.5px;
+    border-bottom:1px solid var(--border); cursor:pointer; user-select:none;
+  }
+  .row:last-child { border-bottom:none; }
+  .row input { accent-color:var(--accent); }
+  .row .org { color:var(--text2); font-size:12px; margin-left:auto; flex:none; }
+  .row i { width:8px; height:8px; border-radius:50%; flex:none; }
+
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { padding:8px 6px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; position:sticky; left:0; background:var(--card); }
+  th { color:var(--text2); cursor:pointer; user-select:none; font-weight:normal; }
+  th.sel { color:var(--accent); }
+  .tablebox { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .dimhead { font-size:11px; color:var(--text2); }
+  .missing { color:var(--text2); }
+  footer { font-size:12px; color:var(--text2); line-height:1.9; margin-top:6px; }
+  footer .formula { display:grid; grid-template-columns:1fr; gap:2px; margin-top:6px; }
+  @media (min-width:700px){ footer .formula{ grid-template-columns:1fr 1fr; } }
+  #err { text-align:center; color:var(--warn); padding:40px 10px; font-size:14px; display:none; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>大模型六维战力雷达
+      <span class="sub">评估体系参考 B 站 UP 主「图灵坐标」· 数据每日自动更新</span>
+    </h1>
+    <button id="themeBtn">☀️ 亮色</button>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="card">
+    <div class="chips" id="chips"></div>
+    <div id="radar"></div>
+    <details>
+      <summary>＋ 添加 / 移除模型（共 <span id="totalN">0</span> 款，当前已选 <span id="selN">0</span> 款）</summary>
+      <input id="search" placeholder="搜索模型或厂商，如 GPT / Claude / DeepSeek…">
+      <div id="picker"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="tablebox">
+      <table id="tbl">
+        <thead><tr id="tHead"></tr></thead>
+        <tbody id="tBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <div>数据来源：<b>Artificial Analysis</b>（artificialanalysis.ai，客观基准）＋ <b>LMArena</b>（lmarena.ai，主观双盲 Elo）· 客观基准为实线维度，主观双盲已标注</div>
+    <div>数据更新：<span id="updated">–</span>（北京时间每日自动抓取）</div>
+    <div class="formula" id="formula"></div>
+    <div style="margin-top:8px">指令遵循 / 代码编程含主观双盲成分，归一化 (Elo−1200)/500；事实可靠性归一化 (v+100)/200。维度缺失表示该模型暂无对应评测数据。</div>
+  </footer>
+</div>
+<div id="err">数据加载失败：请通过 https 链接访问本页（file:// 直开无法读取数据）。</div>
+
+<script src="echarts.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const DIMS_FALLBACK = ["科学推理","长文本推理","指令遵循","工具调用","代码编程","事实可靠性"];
+let DATA=null, CHART=null, selected=new Set(), sortKey="avg", sortAsc=false;
+
+/* ---------- 主题 ---------- */
+const themeBtn = $("#themeBtn");
+function theme(){ return document.documentElement.getAttribute("data-theme")==="light" ? "light":"dark"; }
+function setTheme(t){
+  if(t==="light"){ document.documentElement.setAttribute("data-theme","light"); themeBtn.textContent="🌙 暗色"; }
+  else { document.documentElement.removeAttribute("data-theme"); themeBtn.textContent="☀️ 亮色"; }
+  localStorage.setItem("radar-theme", t);
+  if(CHART) renderChart();
+}
+themeBtn.onclick = ()=> setTheme(theme()==="light"?"dark":"light");
+setTheme(localStorage.getItem("radar-theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+
+/* ---------- 数据 ---------- */
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+const PALETTE = ["#5b8cff","#38e0c8","#ffb454","#ff6b81","#b78cff","#7bd88a","#ffd166","#4dd0e1","#f28bb2","#a3e635","#ff9f6e","#8ea2ff"];
+
+function load(){
+  fetch("data.json?t="+Date.now()).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(init).catch(()=>{ $("#err").style.display="block"; });
+}
+
+function modelScore(m){ const v=DIMS().map(d=>m.dims[d.key]).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; }
+function DIMS(){ return DATA.dimensions; }
+
+function init(d){
+  DATA=d;
+  d.models.forEach((m,i)=>{ m._color = m.creator_color || PALETTE[i%PALETTE.length]; m._avg = modelScore(m); });
+  selected = new Set(d.defaults);
+  // 顶部信息
+  $("#totalN").textContent = d.models.length;
+  const t = d.meta.aa_fetched_at ? new Date(d.meta.aa_fetched_at) : null;
+  $("#updated").textContent = t ? t.toLocaleString("zh-CN",{timeZone:"Asia/Shanghai"}) : "未知";
+  $("#formula").innerHTML = d.dimensions.map(x=>`<div>· <b>${x.label}</b> = ${x.formula}</div>`).join("");
+  // 降级提示
+  const miss=[];
+  if(!d.meta.lmarena_ok || !d.meta.lmarena_ok["instruction-following"]) miss.push("指令遵循");
+  if(!d.meta.lmarena_ok || !d.meta.lmarena_ok["coding"]) miss.push("代码编程（主观项）");
+  if(miss.length){ const b=$("#banner"); b.style.display="block"; b.textContent="⚠️ LMArena 主观双盲数据今日暂缺，「"+miss.join("」「")+"」维度暂为纯客观口径或缺失。"; }
+  renderAll();
+}
+
+function renderAll(){ renderChips(); renderPicker($("#search").value); renderChart(); renderTable(); $("#selN").textContent=selected.size; }
+
+/* ---------- 已选 chips ---------- */
+function renderChips(){
+  const box=$("#chips"); box.innerHTML="";
+  DATA.models.filter(m=>selected.has(m.id)).forEach(m=>{
+    const c=document.createElement("span"); c.className="chip";
+    c.innerHTML=`<i style="background:${m._color}"></i>${m.name}<b title="移除">✕</b>`;
+    c.querySelector("b").onclick=()=>{ selected.delete(m.id); renderAll(); };
+    box.appendChild(c);
+  });
+}
+
+/* ---------- 选择器 ---------- */
+function renderPicker(q){
+  q=(q||"").trim().toLowerCase();
+  const list=DATA.models.filter(m=>!q || m.name.toLowerCase().includes(q) || m.creator.toLowerCase().includes(q));
+  const box=$("#picker"); box.innerHTML="";
+  list.slice(0,300).forEach(m=>{
+    const r=document.createElement("label"); r.className="row";
+    r.innerHTML=`<input type="checkbox" ${selected.has(m.id)?"checked":""}><i style="background:${m._color}"></i><span>${m.name}</span><span class="org">${m.creator}</span>`;
+    r.querySelector("input").onchange=e=>{ e.target.checked?selected.add(m.id):selected.delete(m.id); renderChips(); renderChart(); renderTable(); $("#selN").textContent=selected.size; };
+    box.appendChild(r);
+  });
+  if(list.length>300){ const d=document.createElement("div"); d.className="row"; d.textContent=`…另有 ${list.length-300} 条，请缩小搜索范围`; box.appendChild(d); }
+}
+$("#search").oninput=e=>renderPicker(e.target.value);
+
+/* ---------- 雷达图 ---------- */
+function renderChart(){
+  if(!CHART) CHART=echarts.init($("#radar"));
+  const txt=css("--text"), txt2=css("--text2"), bd=css("--border");
+  const models=DATA.models.filter(m=>selected.has(m.id));
+  CHART.setOption({
+    backgroundColor:"transparent",
+    color: models.map(m=>m._color),
+    tooltip:{ trigger:"item", backgroundColor:css("--bg2"), borderColor:bd, textStyle:{color:txt,fontSize:12},
+      formatter(p){ const m=models[p.seriesIndex]; let h=`<b>${m.name}</b><br>`;
+        DIMS().forEach((d,i)=>{ const v=m.dims[d.key]; h+=`${d.label}：${v==null?"暂无数据":(v*100).toFixed(1)}<br>`; });
+        return h; } },
+    legend:{ bottom:0, textStyle:{color:txt2,fontSize:11}, itemWidth:14, itemHeight:8, type:"scroll", pageTextStyle:{color:txt2} },
+    radar:{
+      indicator: DIMS().map(d=>({name:d.label, max:100})),
+      radius:"62%", center:["50%","48%"], splitNumber:4,
+      axisName:{ color:txt, fontSize:12.5 },
+      splitLine:{ lineStyle:{ color:bd } },
+      splitArea:{ show:true, areaStyle:{ color: theme()==="light" ? ["rgba(59,111,224,.03)","rgba(59,111,224,.06)"] : ["rgba(91,140,255,.04)","rgba(91,140,255,.08)"] } },
+      axisLine:{ lineStyle:{ color:bd } }
+    },
+    series:[{
+      type:"radar", symbolSize:3.5,
+      data: models.map(m=>({
+        name:m.name,
+        value: DIMS().map(d=> m.dims[d.key]==null?null:+(m.dims[d.key]*100).toFixed(2)),
+        lineStyle:{ width:2, shadowColor:m._color, shadowBlur:6 },
+        areaStyle:{ opacity: models.length>5?0.06:0.14 },
+        emphasis:{ lineStyle:{ width:3.5 } }
+      }))
+    }]
+  }, true);
+  CHART.resize();
+}
+addEventListener("resize", ()=>CHART&&CHART.resize());
+
+/* ---------- 明细表 ---------- */
+function renderTable(){
+  const head=$("#tHead"), body=$("#tBody");
+  const cols=[{k:"name",t:"模型"},{k:"avg",t:"综合"}].concat(DIMS().map(d=>({k:d.key,t:d.label})));
+  head.innerHTML=cols.map(c=>`<th data-k="${c.k}" class="${sortKey===c.k?'sel':''}">${c.t}${sortKey===c.k?(sortAsc?" ↑":" ↓"):""}</th>`).join("");
+  head.querySelectorAll("th").forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(sortKey===k) sortAsc=!sortAsc; else { sortKey=k; sortAsc=false; } renderTable(); });
+  const rows=DATA.models.filter(m=>selected.has(m.id));
+  rows.sort((a,b)=>{ const va=sortKey==="name"?a.name:(sortKey==="avg"?a._avg:a.dims[sortKey]); const vb=sortKey==="name"?b.name:(sortKey==="avg"?b._avg:b.dims[sortKey]);
+    if(va==null&&vb==null)return 0; if(va==null)return 1; if(vb==null)return -1;
+    return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1); });
+  body.innerHTML=rows.map(m=>{
+    let h=`<td><span class="dot" style="background:${m._color}"></span>${m.name}</td>`;
+    h+=`<td><b>${m._avg==null?"—":(m._avg*100).toFixed(1)}</b></td>`;
+    DIMS().forEach(d=>{ const v=m.dims[d.key]; h+= v==null? `<td class="missing">—</td>` : `<td>${(v*100).toFixed(1)}</td>`; });
+    return h;
+  }).join("");
+}
+
+load();
+})();
+</script>
+</body>
+</html>
