@@ -74,24 +74,6 @@
   @media (min-width:700px){ footer .formula{ grid-template-columns:1fr 1fr; } }
   #err { text-align:center; color:var(--warn); padding:40px 10px; font-size:14px; display:none; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
-
-  /* 六维排行榜 */
-  .hint { font-size:12px; color:var(--text2); margin-bottom:8px; }
-  .dimgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  @media (max-width:640px){ .dimgrid{ grid-template-columns:repeat(2,1fr); } }
-  .dimlist { border:1px solid var(--border); border-radius:10px; background:var(--bg2); overflow:hidden; }
-  .dl-head { padding:7px 10px; font-size:13px; font-weight:600; border-bottom:1px solid var(--border); }
-  .dl-body { max-height:268px; overflow-y:auto; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
-  .dl-row { display:flex; align-items:center; gap:6px; padding:6px 8px; font-size:12px; cursor:pointer; border-left:3px solid transparent; user-select:none; }
-  .dl-row + .dl-row { border-top:1px solid var(--border); }
-  .dl-row .rk { flex:none; width:20px; color:var(--text2); font-size:11px; text-align:right; }
-  .dl-row .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .dl-row .sc { flex:none; color:var(--text2); font-variant-numeric:tabular-nums; }
-  .dl-row:hover { background:rgba(91,140,255,.10); }
-  .dl-row.focus { background:rgba(91,140,255,.22); border-left-color:var(--accent); font-weight:600; }
-  .dl-none { padding:8px 10px; font-size:11px; color:var(--text2); }
-  .lnk { cursor:pointer; }
-  .lnk:hover { color:var(--accent); text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -113,11 +95,6 @@
       <input id="search" placeholder="搜索模型或厂商，如 GPT / Claude / DeepSeek…">
       <div id="picker"></div>
     </details>
-  </div>
-
-  <div class="card">
-    <div class="hint">六维排行榜 · 点击任意模型名，六个榜单联动高亮并自动滚动定位（再次点击取消）</div>
-    <div class="dimgrid" id="dimLists"></div>
   </div>
 
   <div class="card">
@@ -144,7 +121,7 @@
 "use strict";
 const $ = s => document.querySelector(s);
 const DIMS_FALLBACK = ["科学推理","长文本推理","指令遵循","工具调用","代码编程","事实可靠性"];
-let DATA=null, CHART=null, selected=new Set(), sortKey="avg", sortAsc=false, focusId=null;
+let DATA=null, CHART=null, selected=new Set(), sortKey="avg", sortAsc=false;
 
 /* ---------- 主题 ---------- */
 const themeBtn = $("#themeBtn");
@@ -205,16 +182,15 @@ function init(d){
   renderAll();
 }
 
-function renderAll(){ renderChips(); renderPicker($("#search").value); renderChart(); renderTable(); renderLists(); $("#selN").textContent=selected.size; }
+function renderAll(){ renderChips(); renderPicker($("#search").value); renderChart(); renderTable(); $("#selN").textContent=selected.size; }
 
 /* ---------- 已选 chips ---------- */
 function renderChips(){
   const box=$("#chips"); box.innerHTML="";
   DATA.models.filter(m=>selected.has(m.id)).forEach(m=>{
     const c=document.createElement("span"); c.className="chip";
-    c.innerHTML=`<i style="background:${m._color}"></i><span class="lnk" data-id="${m.id}" title="在六维榜中定位">${m.name}</span><b title="移除">✕</b>`;
+    c.innerHTML=`<i style="background:${m._color}"></i>${m.name}<b title="移除">✕</b>`;
     c.querySelector("b").onclick=()=>{ selected.delete(m.id); renderAll(); };
-    c.querySelector(".lnk").onclick=()=>toggleFocus(m.id);
     box.appendChild(c);
   });
 }
@@ -281,40 +257,11 @@ function renderTable(){
     if(va==null&&vb==null)return 0; if(va==null)return 1; if(vb==null)return -1;
     return (va<vb?-1:va>vb?1:0)*(sortAsc?1:-1); });
   body.innerHTML=rows.map(m=>{
-    let h=`<td><span class="dot" style="background:${m._color}"></span><span class="lnk" data-id="${m.id}">${m.name}</span></td>`;
+    let h=`<td><span class="dot" style="background:${m._color}"></span>${m.name}</td>`;
     h+=`<td><b>${m._avg==null?"—":(m._avg*100).toFixed(1)}</b></td>`;
     DIMS().forEach(d=>{ const v=m.dims[d.key]; h+= v==null? `<td class="missing">—</td>` : `<td>${(v*100).toFixed(1)}</td>`; });
     return h;
   }).join("");
-  body.querySelectorAll(".lnk").forEach(el=>el.onclick=()=>toggleFocus(el.dataset.id));
-}
-
-/* ---------- 六维排行榜（联动高亮 + 自动滚动定位） ---------- */
-function toggleFocus(id){ focusId = (focusId===id) ? null : id; renderLists(); }
-function renderLists(){
-  const grid=$("#dimLists"); grid.innerHTML="";
-  DIMS().forEach(d=>{
-    const ranked=DATA.models.filter(m=>m.dims[d.key]!=null).sort((a,b)=>b.dims[d.key]-a.dims[d.key]).slice(0,100);
-    const card=document.createElement("div"); card.className="dimlist";
-    let rows="";
-    ranked.forEach((m,i)=>{
-      const f=m.id===focusId;
-      rows+=`<div class="dl-row${f?" focus":""}" data-id="${m.id}"${f?' data-focus="1"':""}>`
-        +`<span class="rk">${i+1}</span><span class="nm" title="${m.name}">${m.name}</span><span class="sc">${(m.dims[d.key]*100).toFixed(1)}</span></div>`;
-    });
-    const missing=focusId && !ranked.some(m=>m.id===focusId);
-    card.innerHTML=`<div class="dl-head">${d.label}</div><div class="dl-body">${rows}${missing?'<div class="dl-none">所选模型此维度无数据</div>':""}</div>`;
-    grid.appendChild(card);
-  });
-  grid.querySelectorAll(".dl-row").forEach(r=>r.onclick=()=>toggleFocus(r.dataset.id));
-  if(focusId){
-    setTimeout(()=>{
-      grid.querySelectorAll(".dl-body").forEach(body=>{
-        const el=body.querySelector('[data-focus="1"]');
-        if(el) body.scrollTop = el.offsetTop - body.clientHeight/2 + el.clientHeight/2;
-      });
-    },60);
-  }
 }
 
 load();
