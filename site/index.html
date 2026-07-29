@@ -249,7 +249,10 @@ function renderChart(){
     backgroundColor:"transparent",
     color: models.map(m=>m._color),
     tooltip:{ trigger:"item", backgroundColor:css("--bg2"), borderColor:bd, textStyle:{color:txt,fontSize:12},
-      formatter(p){ const m=models[p.seriesIndex]; let h=`<b>${m.name}</b><br>`;
+      formatter(p){
+        const m = models.find(x=>x.name===p.name) || models[p.dataIndex] || models[0];
+        if(!m) return "";
+        let h=`<b>${m.name}</b><br>`;
         DIMS().forEach((d,i)=>{ const v=m.dims[d.key]; h+=`${d.label}：${v==null?"暂无数据":(v*100).toFixed(1)}<br>`; });
         return h; } },
     legend:{ bottom:0, textStyle:{color:txt2,fontSize:11}, itemWidth:14, itemHeight:8, type:"scroll", pageTextStyle:{color:txt2} },
