@@ -1,0 +1,14 @@
+{
+  "date": "2026-07-31",
+  "fetched_at": "2026-07-31T08:09:57.554370+00:00",
+  "source": "https://artificialanalysis.ai",
+  "source_type": "public_web_surfaces",
+  "parser_version": "public-web-v2",
+  "endpoints": {
+    "llms": {
+      "model_count": 589,
+      "source_type": "page_payload",
+      "source_url": "https://artificialanalysis.ai/leaderboards/models"
+    }
+  }
+}
